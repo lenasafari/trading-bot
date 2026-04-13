@@ -20,10 +20,31 @@ def calculate_indicators(df):
     df['rsi'] = 100 - (100 / (1 + rs))
     
     return df
-
 def check_signal(df):
+
+    if df is None or df.empty or len(df) < 2:
+        print("Not enough data — skipping")
+        return None
+
     latest = df.iloc[-1]
     prev = df.iloc[-2]
+
+    if (
+        latest['Close'] > latest['vwap'] and
+        prev['Close'] < prev['vwap'] and
+        latest['rsi'] > prev['rsi']
+    ):
+        return "BUY"
+
+    if (
+        latest['Close'] < latest['vwap'] and
+        prev['Close'] > prev['vwap'] and
+        latest['rsi'] < prev['rsi']
+    ):
+        return "SELL"
+
+    return None
+
 
     if (
         latest['Close'] > latest['vwap'] and
