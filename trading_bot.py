@@ -1,43 +1,63 @@
+import pandas as pd
+import numpy as np
+import yfinance as yf
+import time
+import requests
+
+SYMBOL = "QQQ"
+INTERVAL = "1m"
+
+
+# -------------------- TELEGRAM --------------------
 def send_telegram(message):
     token = "8675620018:AAEOcL_6cnS4O8RoY779Rc50XDzKfjshgDI"
     chat_id = "8713694007"
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    requests.post(url, data={"chat_id": chat_id, "text": message})
-import pandas as pd
-import numpy as np
-import yfinance as yf
-import time
 
-SYMBOL = "QQQ"
-INTERVAL = "1m"
+    try:
+        requests.post(url, data={"chat_id": chat_id, "text": message})
+    except Exception as e:
+        print("Telegram error:", e)
 
+
+# -------------------- DATA --------------------
 def get_data():
-    df = yf.download(tickers=SYMBOL, period="1d", interval=INTERVAL)
-    return df
+    try:
+        df = yf.download(tickers=SYMBOL, period="1d", interval=INTERVAL)
+        return df
+    except Exception as e:
+        print("Download error:", e)
+        return pd.DataFrame()
 
+
+# -------------------- INDICATORS --------------------
 def calculate_indicators(df):
+
+    if df is None or df.empty:
+        return df
+
     df['vwap'] = (df['Close'] * df['Volume']).cumsum() / df['Volume'].cumsum()
-    
+
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
     rs = gain / loss
     df['rsi'] = 100 - (100 / (1 + rs))
-    
+
     return df
+
+
+# -------------------- SIGNAL LOGIC --------------------
 def check_signal(df):
 
-    # 1. Safety check (prevents crashes)
     if df is None or df.empty or len(df) < 20:
         print("Not enough data — skipping")
         return None
 
-    # 2. Get last two rows
     latest = df.iloc[-1]
     prev = df.iloc[-2]
 
-    # 3. Force values into clean numbers (VERY IMPORTANT FIX)
     try:
         close = float(latest['Close'])
         prev_close = float(prev['Close'])
@@ -52,28 +72,42 @@ def check_signal(df):
         print(f"Data error: {e}")
         return None
 
-    # 4. BUY signal
     if close > vwap and prev_close < prev_vwap and rsi > prev_rsi:
         return "BUY"
 
-    # 5. SELL signal
     if close < vwap and prev_close > prev_vwap and rsi < prev_rsi:
         return "SELL"
 
     return None
 
+
+# -------------------- BOT LOOP --------------------
 def run_bot():
+
     print("Bot is running... watching Nasdaq (QQQ)")
-    
+    send_telegram("Bot started 🚀")
+
     while True:
+
         df = get_data()
+
+        if df is None or df.empty:
+            print("No data received")
+            time.sleep(60)
+            continue
+
         df = calculate_indicators(df)
 
         signal = check_signal(df)
 
         if signal:
-            print(f"{signal} signal at {df.index[-1]} price: {df['Close'].iloc[-1]}")
+            msg = f"{signal} signal at {df.index[-1]} price: {df['Close'].iloc[-1]}"
+            print(msg)
+            send_telegram(msg)
 
         time.sleep(60)
-send_telegram("Test message: bot is working 🚀")
-run_bot()
+
+
+# -------------------- ENTRY POINT --------------------
+if __name__ == "__main__":
+    run_bot()
