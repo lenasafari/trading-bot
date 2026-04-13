@@ -1,3 +1,9 @@
+def send_telegram(message):
+    token = "8675620018:AAEOcL_6cnS4O8RoY779Rc50XDzKfjshgDI"
+    chat_id = "8713694007"
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    requests.post(url, data={"chat_id": chat_id, "text": message})
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -69,5 +75,5 @@ def run_bot():
             print(f"{signal} signal at {df.index[-1]} price: {df['Close'].iloc[-1]}")
 
         time.sleep(60)
-
+send_telegram("Test message: bot is working 🚀")
 run_bot()
