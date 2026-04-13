@@ -10,13 +10,13 @@ INTERVAL = "1m"
 
 # -------------------- TELEGRAM --------------------
 def send_telegram(message):
-    token = "8675620018:AAEOcL_6cnS4O8RoY779Rc50XDzKfjshgDI"
-    chat_id = "8713694007"
-
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    token = "PUT_YOUR_TOKEN_HERE"
+    chat_id = "PUT_YOUR_CHAT_ID_HERE"
 
     try:
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
         requests.post(url, data={"chat_id": chat_id, "text": message})
+        print("Telegram sent:", message)
     except Exception as e:
         print("Telegram error:", e)
 
@@ -24,8 +24,15 @@ def send_telegram(message):
 # -------------------- DATA --------------------
 def get_data():
     try:
+        print("Fetching data...")
         df = yf.download(tickers=SYMBOL, period="1d", interval=INTERVAL)
+
+        if df is None or df.empty:
+            print("No data received from Yahoo")
+            return pd.DataFrame()
+
         return df
+
     except Exception as e:
         print("Download error:", e)
         return pd.DataFrame()
@@ -34,7 +41,7 @@ def get_data():
 # -------------------- INDICATORS --------------------
 def calculate_indicators(df):
 
-    if df is None or df.empty:
+    if df.empty:
         return df
 
     df['vwap'] = (df['Close'] * df['Volume']).cumsum() / df['Volume'].cumsum()
@@ -48,11 +55,10 @@ def calculate_indicators(df):
     return df
 
 
-# -------------------- SIGNAL LOGIC --------------------
+# -------------------- SIGNAL --------------------
 def check_signal(df):
 
     if df is None or df.empty or len(df) < 20:
-        print("Not enough data — skipping")
         return None
 
     latest = df.iloc[-1]
@@ -68,8 +74,7 @@ def check_signal(df):
         rsi = float(latest['rsi'])
         prev_rsi = float(prev['rsi'])
 
-    except Exception as e:
-        print(f"Data error: {e}")
+    except:
         return None
 
     if close > vwap and prev_close < prev_vwap and rsi > prev_rsi:
@@ -81,27 +86,23 @@ def check_signal(df):
     return None
 
 
-# -------------------- BOT LOOP --------------------
+# -------------------- MAIN LOOP --------------------
 def run_bot():
 
-    print("Bot is running... watching Nasdaq (QQQ)")
+    print(">>> BOT STARTED <<<")
     send_telegram("Bot started 🚀")
 
     while True:
 
+        print("Loop running...")
+
         df = get_data()
-
-        if df is None or df.empty:
-            print("No data received")
-            time.sleep(60)
-            continue
-
         df = calculate_indicators(df)
 
         signal = check_signal(df)
 
         if signal:
-            msg = f"{signal} signal at {df.index[-1]} price: {df['Close'].iloc[-1]}"
+            msg = f"{signal} signal on {SYMBOL}"
             print(msg)
             send_telegram(msg)
 
@@ -110,4 +111,5 @@ def run_bot():
 
 # -------------------- ENTRY POINT --------------------
 if __name__ == "__main__":
+    print(">>> ENTRY POINT HIT <<<")
     run_bot()
