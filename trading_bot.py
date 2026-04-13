@@ -1,11 +1,10 @@
 import pandas as pd
 import numpy as np
-import yfinance as yf
 import time
 import requests
+import random
 
 SYMBOL = "QQQ"
-INTERVAL = "1m"
 
 
 # -------------------- TELEGRAM --------------------
@@ -15,34 +14,33 @@ def send_telegram(message):
 
     try:
         url = f"https://api.telegram.org/bot{token}/sendMessage"
-        requests.post(url, data={"chat_id": chat_id, "text": message})
+        requests.post(url, data={"chat_id": chat_id, "text": message}, timeout=10)
         print("Telegram sent:", message)
     except Exception as e:
         print("Telegram error:", e)
 
 
-# -------------------- DATA --------------------
+# -------------------- FAKE PRICE DATA --------------------
 def get_data():
-    try:
-        print("Fetching data...")
-        df = yf.download(tickers=SYMBOL, period="1d", interval=INTERVAL)
 
-        if df is None or df.empty:
-            print("No data received from Yahoo")
-            return pd.DataFrame()
+    # simulate price movement (no Yahoo needed)
+    base_price = 450
 
-        return df
+    prices = []
+    for i in range(50):
+        base_price += random.uniform(-1, 1)
+        prices.append(base_price)
 
-    except Exception as e:
-        print("Download error:", e)
-        return pd.DataFrame()
+    df = pd.DataFrame({
+        "Close": prices,
+        "Volume": np.random.randint(100, 1000, size=50)
+    })
+
+    return df
 
 
 # -------------------- INDICATORS --------------------
 def calculate_indicators(df):
-
-    if df.empty:
-        return df
 
     df['vwap'] = (df['Close'] * df['Volume']).cumsum() / df['Volume'].cumsum()
 
@@ -89,12 +87,12 @@ def check_signal(df):
 # -------------------- MAIN LOOP --------------------
 def run_bot():
 
-    print(">>> BOT STARTED <<<")
-    send_telegram("Bot started 🚀")
+    print("BOT STARTED (NO YAHOO MODE)")
+    send_telegram("Bot started 🚀 (no Yahoo mode)")
 
     while True:
 
-        print("Loop running...")
+        print("New cycle...")
 
         df = get_data()
         df = calculate_indicators(df)
@@ -102,14 +100,13 @@ def run_bot():
         signal = check_signal(df)
 
         if signal:
-            msg = f"{signal} signal on {SYMBOL}"
+            msg = f"{signal} signal detected (simulated QQQ)"
             print(msg)
             send_telegram(msg)
 
-        time.sleep(60)
+        time.sleep(10)  # fast testing loop
 
 
-# -------------------- ENTRY POINT --------------------
+# -------------------- ENTRY --------------------
 if __name__ == "__main__":
-    print(">>> ENTRY POINT HIT <<<")
     run_bot()
