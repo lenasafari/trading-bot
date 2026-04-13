@@ -9,7 +9,7 @@ SYMBOL = "QQQ"
 
 # -------------------- TELEGRAM --------------------
 def send_telegram(message):
-    token = "8675620018:AAEOcL_6cnS4O8RoY779Rc50XDzKfjshgDI"
+    token = "8675620018:AAH09frqqZIkfSnR-oeH7ZXym90WbAgZXXo"
     chat_id = "8713694007"
 
     try:
