@@ -10,8 +10,8 @@ INTERVAL = "1m"
 
 # -------------------- TELEGRAM --------------------
 def send_telegram(message):
-    token = "PUT_YOUR_TOKEN_HERE"
-    chat_id = "PUT_YOUR_CHAT_ID_HERE"
+    token = "8675620018:AAEOcL_6cnS4O8RoY779Rc50XDzKfjshgDI"
+    chat_id = "8713694007"
 
     try:
         url = f"https://api.telegram.org/bot{token}/sendMessage"
