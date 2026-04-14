@@ -2,45 +2,63 @@ import pandas as pd
 import numpy as np
 import time
 import requests
-import random
 
+from alpaca.data.historical import StockHistoricalDataClient
+from alpaca.data.requests import StockBarsRequest
+from alpaca.data.timeframe import TimeFrame
+
+# ---------------- CONFIG ----------------
 SYMBOL = "QQQ"
 
+API_KEY = "PKBP3WBD5CUDNB3ZTEB6XILIU4"
+SECRET_KEY = "6C8PieqwKYGFfE5ZSTeChLu1sSPJGWbxrojksiY9ff4H"
 
-# -------------------- TELEGRAM --------------------
+TG_TOKEN = "8675620018:AAH09frqqZIkfSnR-oeH7ZXym90WbAgZXXo"
+TG_CHAT_ID = "8713694007"
+
+data_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
+
+
+# ---------------- TELEGRAM ----------------
 def send_telegram(message):
-    token = "8675620018:AAH09frqqZIkfSnR-oeH7ZXym90WbAgZXXo"
-    chat_id = "8713694007"
-
     try:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        requests.post(url, data={"chat_id": chat_id, "text": message}, timeout=10)
+        url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
+        requests.post(url, data={"chat_id": TG_CHAT_ID, "text": message}, timeout=10)
         print("Telegram sent:", message)
     except Exception as e:
         print("Telegram error:", e)
 
 
-# -------------------- FAKE PRICE DATA --------------------
+# ---------------- GET REAL DATA ----------------
 def get_data():
+    try:
+        request = StockBarsRequest(
+            symbol_or_symbols=SYMBOL,
+            timeframe=TimeFrame.Minute,
+            limit=50
+        )
 
-    # simulate price movement (no Yahoo needed)
-    base_price = 450
+        bars = data_client.get_stock_bars(request)
 
-    prices = []
-    for i in range(50):
-        base_price += random.uniform(-1, 1)
-        prices.append(base_price)
+        df = bars.df.reset_index()
+        df = df[df["symbol"] == SYMBOL]
 
-    df = pd.DataFrame({
-        "Close": prices,
-        "Volume": np.random.randint(100, 1000, size=50)
-    })
+        df = df.rename(columns={
+            "close": "Close",
+            "volume": "Volume"
+        })
 
-    return df
+        return df[["Close", "Volume"]]
+
+    except Exception as e:
+        print("Data error:", e)
+        return pd.DataFrame()
 
 
-# -------------------- INDICATORS --------------------
+# ---------------- INDICATORS ----------------
 def calculate_indicators(df):
+    if df.empty:
+        return df
 
     df['vwap'] = (df['Close'] * df['Volume']).cumsum() / df['Volume'].cumsum()
 
@@ -53,9 +71,8 @@ def calculate_indicators(df):
     return df
 
 
-# -------------------- SIGNAL --------------------
+# ---------------- SIGNAL ----------------
 def check_signal(df):
-
     if df is None or df.empty or len(df) < 20:
         return None
 
@@ -84,29 +101,33 @@ def check_signal(df):
     return None
 
 
-# -------------------- MAIN LOOP --------------------
+# ---------------- MAIN LOOP ----------------
 def run_bot():
 
-    print("BOT STARTED (NO YAHOO MODE)")
-    send_telegram("Bot started 🚀 (no Yahoo mode)")
+    print("BOT STARTED (ALPACA MODE)")
+    send_telegram("Bot started 🚀 (real Alpaca data)")
 
     while True:
 
-        print("New cycle...")
-
         df = get_data()
+
+        if df.empty:
+            print("No data...")
+            time.sleep(30)
+            continue
+
         df = calculate_indicators(df)
 
         signal = check_signal(df)
 
         if signal:
-            msg = f"{signal} signal detected (simulated QQQ)"
+            msg = f"{signal} signal on {SYMBOL}"
             print(msg)
             send_telegram(msg)
 
-        time.sleep(10)  # fast testing loop
+        time.sleep(60)
 
 
-# -------------------- ENTRY --------------------
+# ---------------- ENTRY ----------------
 if __name__ == "__main__":
     run_bot()
